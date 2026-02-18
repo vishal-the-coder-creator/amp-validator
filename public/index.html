@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMP Validator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --surface: #18181c;
+      --border: #2a2a30;
+      --text: #e4e4e7;
+      --text-muted: #a1a1aa;
+      --accent: #22c55e;
+      --accent-dim: #16a34a;
+      --error: #ef4444;
+      --error-bg: rgba(239, 68, 68, 0.12);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --link: #3b82f6;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .input-group button {
+      align-self: flex-start;
+    }
+
+    textarea {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+      resize: vertical;
+      min-height: 120px;
+      line-height: 1.5;
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    button {
+      padding: 0.75rem 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      background: var(--accent);
+      color: #0a0a0c;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: var(--accent-dim);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .results-container {
+      margin-top: 1.5rem;
+      display: none;
+    }
+
+    .results-container.visible {
+      display: block;
+    }
+
+    .results-summary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      text-align: center;
+    }
+
+    .summary-item {
+      padding: 0.5rem;
+    }
+
+    .summary-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .summary-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .summary-value.pass {
+      color: var(--accent);
+    }
+
+    .summary-value.fail {
+      color: var(--error);
+    }
+
+    .result-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .result-banner {
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .result-banner.valid {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+
+    .result-banner.invalid {
+      background: var(--error-bg);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .result-banner.fetch-error {
+      background: var(--error-bg);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .result-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .result-title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .result-detail {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .validated-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-top: 0.5rem;
+    }
+
+    .errors-section {
+      margin-top: 1rem;
+    }
+
+    .section-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .error-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border-left: 3px solid var(--error);
+    }
+
+    .error-item.warning {
+      border-left-color: var(--warning);
+    }
+
+    .error-message {
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .error-location {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .fix-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.875rem;
+      color: var(--link);
+      text-decoration: none;
+      margin-top: 0.5rem;
+    }
+
+    .fix-link:hover {
+      text-decoration: underline;
+    }
+
+    .fix-hint {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AMP Validator</h1>
+      <p class="subtitle">Validate multiple AMP URLs at once. Enter one URL per line to check which pages are valid AMP.</p>
+    </header>
+
+    <div class="card">
+      <form id="validate-form">
+        <div class="input-group">
+          <textarea
+            id="urls-input"
+            placeholder="https://example.com/amp-page1.html
+https://example.com/amp-page2.html
+https://another-site.com/article-amp.html"
+          ></textarea>
+          <button type="submit" id="submit-btn">Validate URLs</button>
+        </div>
+      </form>
+
+      <div id="results-container" class="results-container">
+        <div id="results-summary" class="results-summary"></div>
+        <div id="results-list" class="results-list"></div>
+      </div>
+    </div>
+
+    <footer>
+      Powered by <a href="https://www.npmjs.com/package/amphtml-validator" target="_blank" rel="noopener">amphtml-validator</a> · <a href="https://amp.dev/documentation/guides-and-tutorials/start/create/" target="_blank" rel="noopener">AMP Docs</a>
+    </footer>
+  </div>
+
+  <script>
+    // Check if page is opened as file:// and show warning
+    if (window.location.protocol === 'file:') {
+      document.body.innerHTML = `
+        <div class="container">
+          <div class="card" style="text-align: center; padding: 2rem;">
+            <h2 style="color: var(--error); margin-bottom: 1rem;">⚠️ Wrong Way to Open</h2>
+            <p style="margin-bottom: 1rem;">You're opening this file directly from your computer.</p>
+            <p style="margin-bottom: 1.5rem; color: var(--text-muted);">To use the AMP Validator, you need to access it through the web server.</p>
+            <div style="background: var(--bg); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+              <p style="font-weight: 600; margin-bottom: 0.5rem;">Steps to fix:</p>
+              <ol style="text-align: left; display: inline-block; color: var(--text-muted);">
+                <li>Make sure the server is running: <code style="background: var(--bg); padding: 0.2rem 0.4rem; border-radius: 4px;">npm start</code></li>
+                <li>Open your browser and go to: <a href="http://localhost:3000" style="color: var(--link);">http://localhost:3000</a></li>
+              </ol>
+            </div>
+            <a href="http://localhost:3000" style="display: inline-block; padding: 0.75rem 1.5rem; background: var(--accent); color: #0a0a0c; text-decoration: none; border-radius: 8px; font-weight: 600;">Open AMP Validator →</a>
+          </div>
+        </div>
+      `;
+    }
+
+    const form = document.getElementById('validate-form');
+    const urlsInput = document.getElementById('urls-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const resultsContainer = document.getElementById('results-container');
+    const resultsSummary = document.getElementById('results-summary');
+    const resultsList = document.getElementById('results-list');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const urlText = urlsInput.value.trim();
+      if (!urlText) {
+        alert('Please enter at least one URL');
+        return;
+      }
+
+      // Parse URLs from textarea (one per line, filter empty lines)
+      const urls = urlText
+        .split('\n')
+        .map(u => u.trim())
+        .filter(u => u.length > 0);
+
+      if (urls.length === 0) {
+        alert('Please enter at least one URL');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="loading"></span>Validating ${urls.length} URL(s)…`;
+      resultsContainer.classList.remove('visible');
+      resultsSummary.innerHTML = '';
+      resultsList.innerHTML = '';
+
+      try {
+        const results = [];
+        const errors = [];
+
+        // Validate each URL
+        for (const url of urls) {
+          try {
+            const res = await fetch('/api/validate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url }),
+            });
+
+            let data;
+            try {
+              data = await res.json();
+            } catch (parseErr) {
+              errors.push({ url, error: `Failed to parse response: ${parseErr.message}` });
+              continue;
+            }
+
+            if (!res.ok) {
+              errors.push({ url, error: data.error || `Server error ${res.status}` });
+              continue;
+            }
+
+            if (!data.success) {
+              errors.push({ url, error: data.error || 'Validation failed' });
+              continue;
+            }
+
+            results.push(data);
+          } catch (err) {
+            errors.push({ url, error: err.message || 'Unknown error' });
+          }
+        }
+
+        // Display results
+        displayResults(results, errors);
+        resultsContainer.classList.add('visible');
+
+      } catch (err) {
+        console.error('Batch validation error:', err);
+        resultsSummary.innerHTML = `
+          <div style="grid-column: 1/-1; padding: 1rem; background: var(--error-bg); border: 1px solid var(--error); border-radius: 8px; color: var(--error);">
+            <strong>Error:</strong> ${escapeHtml(err.message || 'Unknown error occurred')}
+          </div>
+        `;
+        resultsContainer.classList.add('visible');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Validate URLs';
+      }
+    });
+
+    function displayResults(results, errors) {
+      // Calculate summary
+      const totalUrls = results.length + errors.length;
+      const validCount = results.filter(r => r.valid).length;
+      const invalidCount = results.filter(r => !r.valid).length;
+
+      // Display summary
+      resultsSummary.innerHTML = `
+        <div class="summary-item">
+          <div class="summary-label">Total</div>
+          <div class="summary-value">${totalUrls}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Valid</div>
+          <div class="summary-value pass">${validCount}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Invalid</div>
+          <div class="summary-value fail">${invalidCount}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">Errors</div>
+          <div class="summary-value fail">${errors.length}</div>
+        </div>
+      `;
+
+      // Display results for each URL
+      let html = '';
+
+      // Valid results
+      if (validCount > 0) {
+        html += '<div style="margin-top: 1rem;"><div class="section-title">Valid AMP Pages ✓</div>';
+        results.filter(r => r.valid).forEach(r => {
+          html += `
+            <div class="result-item">
+              <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                <span style="color: var(--accent); font-size: 1.25rem; flex-shrink: 0;">✓</span>
+                <div>
+                  <div style="font-weight: 600; color: var(--accent);">Valid AMP</div>
+                  <div class="validated-url" style="margin-top: 0.5rem;">${escapeHtml(r.url)}</div>
+                  ${r.warnings && r.warnings.length > 0 ? 
+                    `<div style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--warning);">⚠️ ${r.warnings.length} warning(s)</div>` 
+                    : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      // Invalid results
+      if (invalidCount > 0) {
+        html += '<div style="margin-top: 1rem;"><div class="section-title">Invalid AMP Pages ✕</div>';
+        results.filter(r => !r.valid).forEach(r => {
+          html += `
+            <div class="result-item">
+              <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                <span style="color: var(--error); font-size: 1.25rem; flex-shrink: 0;">✕</span>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: var(--error);">Invalid AMP (${r.errors.length} error${r.errors.length !== 1 ? 's' : ''})</div>
+                  <div class="validated-url" style="margin-top: 0.5rem;">${escapeHtml(r.url)}</div>
+                  <div style="margin-top: 0.75rem; max-height: 150px; overflow-y: auto;">
+                    ${r.errors.slice(0, 3).map(e => `
+                      <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0; padding: 0.5rem; background: var(--bg); border-left: 2px solid var(--error); border-radius: 4px;">
+                        <strong>Line ${e.line}:</strong> ${escapeHtml(e.message)}
+                      </div>
+                    `).join('')}
+                    ${r.errors.length > 3 ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0;">… and ${r.errors.length - 3} more error(s)</div>` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      // Fetch errors
+      if (errors.length > 0) {
+        html += '<div style="margin-top: 1rem;"><div class="section-title">Failed to Fetch ⚠️</div>';
+        errors.forEach(e => {
+          html += `
+            <div class="result-item">
+              <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                <span style="color: var(--warning); font-size: 1.25rem; flex-shrink: 0;">⚠️</span>
+                <div>
+                  <div style="font-weight: 600; color: var(--warning);">Could not fetch URL</div>
+                  <div class="validated-url" style="margin-top: 0.5rem;">${escapeHtml(e.url)}</div>
+                  <div style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">${escapeHtml(e.error)}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      resultsList.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+  </script>
+  </script>
+</body>
+</html>

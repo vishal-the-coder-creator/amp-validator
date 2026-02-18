@@ -1,0 +1,26 @@
+{
+  "name": "amp-validator-tool",
+  "version": "1.0.0",
+  "description": "AMP Validator - Validate URLs for AMP compliance and get fix suggestions",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "amp",
+    "validator",
+    "amp-validator"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "amphtml-validator": "^1.0.38",
+    "axios": "^1.13.5",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
