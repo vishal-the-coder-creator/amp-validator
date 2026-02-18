@@ -519,7 +519,9 @@ https://another-site.com/article-amp.html"
       // Invalid results
       if (invalidCount > 0) {
         html += '<div style="margin-top: 1rem;"><div class="section-title">Invalid AMP Pages ✕</div>';
-        results.filter(r => !r.valid).forEach(r => {
+        results.filter(r => !r.valid).forEach((r, idx) => {
+          const errorListId = `errors-${Date.now()}-${idx}`;
+          const hasMoreErrors = r.errors.length > 3;
           html += `
             <div class="result-item">
               <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
@@ -527,13 +529,34 @@ https://another-site.com/article-amp.html"
                 <div style="flex: 1;">
                   <div style="font-weight: 600; color: var(--error);">Invalid AMP (${r.errors.length} error${r.errors.length !== 1 ? 's' : ''})</div>
                   <div class="validated-url" style="margin-top: 0.5rem;">${escapeHtml(r.url)}</div>
-                  <div style="margin-top: 0.75rem; max-height: 150px; overflow-y: auto;">
+                  <div style="margin-top: 0.75rem;">
                     ${r.errors.slice(0, 3).map(e => `
                       <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0; padding: 0.5rem; background: var(--bg); border-left: 2px solid var(--error); border-radius: 4px;">
                         <strong>Line ${e.line}:</strong> ${escapeHtml(e.message)}
                       </div>
                     `).join('')}
-                    ${r.errors.length > 3 ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0;">… and ${r.errors.length - 3} more error(s)</div>` : ''}
+                    ${hasMoreErrors ? `
+                      <button onclick="toggleErrors('${errorListId}', this)" style="
+                        margin-top: 0.5rem;
+                        padding: 0.4rem 0.8rem;
+                        background: rgba(239, 68, 68, 0.2);
+                        border: 1px solid var(--error);
+                        color: var(--error);
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 0.85rem;
+                        transition: background 0.2s;
+                      " onmouseover="this.style.background='rgba(239, 68, 68, 0.3)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'">
+                        ▼ Show ${r.errors.length - 3} More Error(s)
+                      </button>
+                      <div id="${errorListId}" style="display: none; margin-top: 0.5rem;">
+                        ${r.errors.slice(3).map(e => `
+                          <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0; padding: 0.5rem; background: var(--bg); border-left: 2px solid var(--error); border-radius: 4px;">
+                            <strong>Line ${e.line}:</strong> ${escapeHtml(e.message)}
+                          </div>
+                        `).join('')}
+                      </div>
+                    ` : ''}
                   </div>
                 </div>
               </div>
@@ -571,6 +594,20 @@ https://another-site.com/article-amp.html"
       const div = document.createElement('div');
       div.textContent = s;
       return div.innerHTML;
+    }
+
+    function toggleErrors(elementId, button) {
+      const errorDiv = document.getElementById(elementId);
+      if (errorDiv.style.display === 'none') {
+        errorDiv.style.display = 'block';
+        button.innerHTML = '▲ Hide Details';
+        button.style.background = 'rgba(239, 68, 68, 0.3)';
+      } else {
+        errorDiv.style.display = 'none';
+        const originalText = button.getAttribute('data-original-text') || button.innerHTML;
+        button.innerHTML = originalText;
+        button.style.background = 'rgba(239, 68, 68, 0.2)';
+      }
     }
   </script>
   </script>
