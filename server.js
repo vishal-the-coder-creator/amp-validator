@@ -3,9 +3,11 @@ const cors = require('cors');
 const amphtmlValidator = require('amphtml-validator');
 const axios = require('axios');
 const path = require('path');
+const zlib = require('zlib');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const AMP_CSS_LIMIT_BYTES = 75 * 1024;
 
 app.use(cors());
 app.use(express.json());
@@ -61,6 +63,187 @@ async function fetchHtml(url) {
     }
     throw err.message ? new Error(err.message) : new Error('Failed to fetch URL.');
   }
+}
+
+function extractAmpCustomCss(html) {
+  const ampCustomStyleRegex = /<style\b(?=[^>]*\bamp-custom\b)[^>]*>([\s\S]*?)<\/style>/i;
+  const match = html.match(ampCustomStyleRegex);
+  return match ? match[1] : null;
+}
+
+function getCssSizeMetrics(cssContent) {
+  const cssBytes = Buffer.byteLength(cssContent, 'utf8');
+  const remainingBytes = Math.max(AMP_CSS_LIMIT_BYTES - cssBytes, 0);
+
+  return {
+    cssBytes,
+    cssKilobytes: Number((cssBytes / 1024).toFixed(2)),
+    ampLimitBytes: AMP_CSS_LIMIT_BYTES,
+    ampLimitKilobytes: 75,
+    remainingBytes,
+    remainingKilobytes: Number((remainingBytes / 1024).toFixed(2)),
+    usagePercent: Number(((cssBytes / AMP_CSS_LIMIT_BYTES) * 100).toFixed(1)),
+    exceedsLimit: cssBytes > AMP_CSS_LIMIT_BYTES,
+  };
+}
+
+function stripCssComments(cssContent) {
+  return cssContent.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+function normalizeSelector(selector) {
+  return selector.replace(/\s+/g, ' ').replace(/\s*([>+~,:])\s*/g, '$1').trim();
+}
+
+function countDeclarations(ruleBody) {
+  return (ruleBody.match(/:[^;{}]+(?=;|$)/g) || []).length;
+}
+
+function extractCssBlocks(cssContent) {
+  const blocks = [];
+  const css = stripCssComments(cssContent);
+
+  function walk(text, inMedia = false) {
+    let buffer = '';
+
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+
+      if (char === '{') {
+        const selector = buffer.trim();
+        buffer = '';
+
+        let depth = 1;
+        let bodyStart = i + 1;
+        let j = bodyStart;
+
+        while (j < text.length && depth > 0) {
+          if (text[j] === '{') depth += 1;
+          if (text[j] === '}') depth -= 1;
+          j += 1;
+        }
+
+        const body = text.slice(bodyStart, j - 1);
+        const isMedia = /^@media\b/i.test(selector);
+        const isRule = selector && !selector.startsWith('@');
+
+        blocks.push({
+          selector,
+          body,
+          isMedia,
+          isRule,
+          inMedia,
+          sizeBytes: Buffer.byteLength(`${selector}{${body}}`, 'utf8'),
+          declarationCount: isRule ? countDeclarations(body) : 0,
+        });
+
+        if (isMedia) {
+          walk(body, true);
+        }
+
+        i = j - 1;
+      } else if (char === ';') {
+        buffer = '';
+      } else {
+        buffer += char;
+      }
+    }
+  }
+
+  walk(css, false);
+  return blocks;
+}
+
+function getTopLargestRules(blocks, limit = 10) {
+  return blocks
+    .filter((block) => block.isRule)
+    .sort((a, b) => b.sizeBytes - a.sizeBytes)
+    .slice(0, limit)
+    .map((block) => ({
+      selector: block.selector,
+      sizeBytes: block.sizeBytes,
+      sizeKilobytes: Number((block.sizeBytes / 1024).toFixed(2)),
+      declarationCount: block.declarationCount,
+      preview: block.body.replace(/\s+/g, ' ').trim().slice(0, 160),
+    }));
+}
+
+function getLargestSelectors(blocks, limit = 10) {
+  return blocks
+    .filter((block) => block.isRule)
+    .map((block) => ({
+      selector: block.selector,
+      length: block.selector.length,
+      sizeBytes: Buffer.byteLength(block.selector, 'utf8'),
+    }))
+    .sort((a, b) => b.length - a.length)
+    .slice(0, limit);
+}
+
+function analyzeCssContent(cssContent) {
+  const cleanCss = stripCssComments(cssContent);
+  const blocks = extractCssBlocks(cleanCss);
+  const ruleBlocks = blocks.filter((block) => block.isRule);
+  const mediaQueries = blocks.filter((block) => block.isMedia);
+  const selectorEntries = ruleBlocks.flatMap((block) =>
+    block.selector
+      .split(',')
+      .map((part) => normalizeSelector(part))
+      .filter(Boolean)
+  );
+
+  const selectorFrequency = new Map();
+  selectorEntries.forEach((selector) => {
+    selectorFrequency.set(selector, (selectorFrequency.get(selector) || 0) + 1);
+  });
+
+  const duplicateSelectors = [...selectorFrequency.entries()]
+    .filter(([, count]) => count > 1)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20)
+    .map(([selector, count]) => ({ selector, count }));
+
+  const emptyRules = ruleBlocks
+    .filter((block) => stripCssComments(block.body).trim().length === 0)
+    .map((block) => block.selector)
+    .slice(0, 20);
+
+  const totalCssBytes = Buffer.byteLength(cssContent, 'utf8');
+  const estimatedGzipBytes = zlib.gzipSync(Buffer.from(cssContent, 'utf8')).length;
+
+  const suggestions = [];
+  if (duplicateSelectors.length > 0) {
+    suggestions.push('Merge duplicate selectors to reduce repetition and improve maintainability.');
+  }
+  if (emptyRules.length > 0) {
+    suggestions.push('Remove empty CSS rules that do not affect rendering.');
+  }
+  if (mediaQueries.length > 12) {
+    suggestions.push('Review media queries for consolidation opportunities.');
+  }
+  if (selectorEntries.length > 0 && selectorEntries.length / Math.max(ruleBlocks.length, 1) > 2.5) {
+    suggestions.push('Some rules have many selectors. Consider splitting or simplifying grouped selectors.');
+  }
+  if (totalCssBytes > AMP_CSS_LIMIT_BYTES * 0.9) {
+    suggestions.push('You are close to the AMP CSS limit. Prioritize deduplication and trimming large rule blocks.');
+  }
+  if (suggestions.length === 0) {
+    suggestions.push('CSS size looks healthy. Keep watching for repeated selectors and large rule groups as the stylesheet grows.');
+  }
+
+  return {
+    totalRulesCount: ruleBlocks.length,
+    totalSelectorsCount: selectorEntries.length,
+    mediaQueriesCount: mediaQueries.length,
+    duplicateSelectors,
+    emptyRules,
+    largestSelectors: getLargestSelectors(blocks),
+    largestRules: getTopLargestRules(blocks),
+    topLargestBlocks: getTopLargestRules(blocks),
+    optimizationSuggestions: suggestions,
+    estimatedGzipBytes,
+    estimatedGzipKilobytes: Number((estimatedGzipBytes / 1024).toFixed(2)),
+  };
 }
 
 /**
@@ -264,6 +447,87 @@ app.post('/api/validate', async (req, res) => {
       url: parsedUrl.href,
     });
   }
+});
+
+app.post('/api/check-css-size', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'Please provide a valid URL.',
+    });
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url.trim());
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return res.status(400).json({
+        success: false,
+        error: 'URL must use http or https.',
+      });
+    }
+  } catch {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid URL format. Example: https://example.com/page',
+    });
+  }
+
+  let html;
+  let fetchUrl = parsedUrl.href;
+  try {
+    html = await fetchHtml(fetchUrl);
+  } catch (err) {
+    console.error(`Fetch error for ${fetchUrl}:`, err.message);
+    if (parsedUrl.protocol === 'http:') {
+      const httpsUrl = 'https:' + parsedUrl.href.slice(5);
+      console.log(`Retrying CSS check with HTTPS: ${httpsUrl}`);
+      try {
+        html = await fetchHtml(httpsUrl);
+        fetchUrl = httpsUrl;
+      } catch (retryErr) {
+        console.error('HTTPS retry for CSS check also failed:', retryErr.message);
+        return res.status(422).json({
+          success: false,
+          error: `Failed to fetch URL. HTTP error: ${err.message}. HTTPS error: ${retryErr.message}`,
+          url: parsedUrl.href,
+        });
+      }
+    } else {
+      return res.status(422).json({
+        success: false,
+        error: err.message || 'Failed to fetch URL. Please check the URL and try again.',
+        url: parsedUrl.href,
+      });
+    }
+  }
+
+  if (!html || typeof html !== 'string' || html.length === 0) {
+    return res.status(422).json({
+      success: false,
+      error: 'The URL returned empty or invalid HTML content.',
+      url: fetchUrl,
+    });
+  }
+
+  const ampCustomCss = extractAmpCustomCss(html);
+  if (ampCustomCss == null) {
+    return res.status(404).json({
+      success: false,
+      error: 'No <style amp-custom> block found on this page.',
+      url: fetchUrl,
+    });
+  }
+
+  return res.json({
+    success: true,
+    url: fetchUrl,
+    ...getCssSizeMetrics(ampCustomCss),
+    rawCss: ampCustomCss,
+    details: analyzeCssContent(ampCustomCss),
+  });
 });
 
 app.get('/', (req, res) => {

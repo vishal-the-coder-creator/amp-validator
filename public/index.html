@@ -11,6 +11,7 @@
     :root {
       --bg: #0f0f12;
       --surface: #18181c;
+      --surface-soft: #1d1d23;
       --border: #2a2a30;
       --text: #e4e4e7;
       --text-muted: #a1a1aa;
@@ -77,8 +78,10 @@
       margin-bottom: 1rem;
     }
 
-    .input-group button {
-      align-self: flex-start;
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
     }
 
     textarea {
@@ -105,7 +108,8 @@
       border-color: var(--accent);
     }
 
-    button {
+    button,
+    .ghost-button {
       padding: 0.75rem 1.25rem;
       font-size: 1rem;
       font-weight: 600;
@@ -115,22 +119,36 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s, transform 0.1s, border-color 0.2s;
       white-space: nowrap;
     }
 
-    button:hover {
+    button:hover,
+    .ghost-button:hover {
       background: var(--accent-dim);
     }
 
-    button:active {
+    button:active,
+    .ghost-button:active {
       transform: scale(0.98);
     }
 
-    button:disabled {
+    button:disabled,
+    .ghost-button:disabled {
       opacity: 0.6;
       cursor: not-allowed;
       transform: none;
+    }
+
+    .ghost-button {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .ghost-button:hover {
+      background: var(--surface-soft);
+      border-color: #3a3a42;
     }
 
     .results-container {
@@ -178,41 +196,31 @@
       color: var(--error);
     }
 
-    .result-item {
+    .result-item,
+    .css-result-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 1rem;
       margin-bottom: 1rem;
+      transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
     }
 
-    .result-banner {
-      padding: 1rem 1.25rem;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
+    .css-result-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
     }
 
-    .result-banner.valid {
-      background: rgba(34, 197, 94, 0.15);
-      border: 1px solid rgba(34, 197, 94, 0.35);
+    .css-result-card.safe {
+      border-color: rgba(34, 197, 94, 0.35);
     }
 
-    .result-banner.invalid {
-      background: var(--error-bg);
-      border: 1px solid rgba(239, 68, 68, 0.35);
+    .css-result-card.warning {
+      border-color: rgba(245, 158, 11, 0.35);
     }
 
-    .result-banner.fetch-error {
-      background: var(--error-bg);
-      border: 1px solid rgba(239, 68, 68, 0.35);
-    }
-
-    .result-icon {
-      font-size: 1.5rem;
-      flex-shrink: 0;
+    .css-result-card.error {
+      border-color: rgba(239, 68, 68, 0.35);
     }
 
     .result-title {
@@ -234,10 +242,6 @@
       margin-top: 0.5rem;
     }
 
-    .errors-section {
-      margin-top: 1rem;
-    }
-
     .section-title {
       font-size: 0.875rem;
       font-weight: 600;
@@ -247,56 +251,11 @@
       letter-spacing: 0.05em;
     }
 
-    .error-item {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 0.75rem;
-      border-left: 3px solid var(--error);
-    }
-
-    .error-item.warning {
-      border-left-color: var(--warning);
-    }
-
-    .error-message {
-      font-size: 0.95rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .error-location {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 0.5rem;
-    }
-
-    .fix-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      font-size: 0.875rem;
-      color: var(--link);
-      text-decoration: none;
-      margin-top: 0.5rem;
-    }
-
-    .fix-link:hover {
-      text-decoration: underline;
-    }
-
-    .fix-hint {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-top: 0.35rem;
-    }
-
     .loading {
       display: inline-block;
       width: 18px;
       height: 18px;
-      border: 2px solid rgba(0,0,0,0.2);
+      border: 2px solid rgba(0, 0, 0, 0.2);
       border-top-color: currentColor;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
@@ -304,8 +263,345 @@
       margin-right: 0.5rem;
     }
 
+    .css-result-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .status-pill {
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .status-pill.safe {
+      background: rgba(34, 197, 94, 0.14);
+      color: var(--accent);
+    }
+
+    .status-pill.warning {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .status-pill.error {
+      background: var(--error-bg);
+      color: var(--error);
+    }
+
+    .css-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .css-metric {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .css-metric:hover {
+      transform: translateY(-1px);
+      border-color: #3a3a42;
+    }
+
+    .css-metric-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+
+    .css-metric-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .css-metric-value.safe {
+      color: var(--accent);
+    }
+
+    .css-metric-value.warning {
+      color: var(--warning);
+    }
+
+    .css-metric-value.error {
+      color: var(--error);
+    }
+
+    .progress-wrap {
+      margin-top: 1rem;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-fill {
+      width: min(var(--progress-width), 100%);
+      height: 100%;
+      border-radius: inherit;
+      animation: grow-bar 0.8s ease;
+    }
+
+    .progress-fill.safe {
+      background: linear-gradient(90deg, #16a34a, #22c55e);
+    }
+
+    .progress-fill.warning {
+      background: linear-gradient(90deg, #d97706, #f59e0b);
+    }
+
+    .progress-fill.error {
+      background: linear-gradient(90deg, #dc2626, #ef4444);
+    }
+
+    .progress-caption {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .css-detail-toggle {
+      margin-top: 1rem;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+    }
+
+    .css-detail-toggle:hover {
+      background: var(--surface-soft);
+    }
+
+    .toggle-arrow {
+      transition: transform 0.25s ease;
+      color: var(--text-muted);
+    }
+
+    .css-detail-toggle[aria-expanded="true"] .toggle-arrow {
+      transform: rotate(180deg);
+    }
+
+    .css-details-panel {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.35s ease, opacity 0.3s ease, margin-top 0.3s ease;
+      margin-top: 0;
+    }
+
+    .css-details-panel.expanded {
+      max-height: 3000px;
+      opacity: 1;
+      margin-top: 1rem;
+    }
+
+    .css-details-inner {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      animation: fade-up 0.3s ease;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .detail-box {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem;
+    }
+
+    .detail-box strong {
+      display: block;
+      margin-top: 0.25rem;
+      font-size: 1rem;
+    }
+
+    .detail-section {
+      margin-top: 1rem;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .detail-list-item {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem;
+    }
+
+    .detail-list-item code,
+    .code-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .detail-list-meta {
+      margin-top: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .detail-warning {
+      background: var(--warning-bg);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      color: #fbbf24;
+      border-radius: 8px;
+      padding: 0.8rem;
+      font-size: 0.9rem;
+    }
+
+    .detail-success {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.22);
+      color: #4ade80;
+      border-radius: 8px;
+      padding: 0.8rem;
+      font-size: 0.9rem;
+    }
+
+    .detail-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .search-input {
+      width: 100%;
+      margin-top: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.92rem;
+      font-family: inherit;
+      background: var(--surface-soft);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--link);
+    }
+
+    .code-viewer {
+      margin-top: 0.75rem;
+      background: #0b0b0d;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 380px;
+    }
+
+    .code-viewer pre {
+      margin: 0;
+      min-width: max-content;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .code-line {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 0.75rem;
+      padding: 0 1rem;
+      white-space: pre-wrap;
+    }
+
+    .code-line:nth-child(odd) {
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .line-number {
+      color: #6b7280;
+      user-select: none;
+      text-align: right;
+      padding: 0.12rem 0;
+    }
+
+    .line-code {
+      padding: 0.12rem 0;
+      color: #e4e4e7;
+    }
+
+    .css-comment {
+      color: #6b7280;
+    }
+
+    .css-selector {
+      color: #93c5fd;
+    }
+
+    .css-property {
+      color: #86efac;
+    }
+
+    .css-value {
+      color: #fcd34d;
+    }
+
+    mark {
+      background: rgba(59, 130, 246, 0.28);
+      color: inherit;
+      padding: 0 1px;
+      border-radius: 3px;
+    }
+
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    @keyframes grow-bar {
+      from { width: 0; }
+      to { width: min(var(--progress-width), 100%); }
+    }
+
+    @keyframes fade-up {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     footer {
@@ -322,6 +618,30 @@
 
     footer a:hover {
       text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 1.25rem 1rem;
+      }
+
+      .css-result-head,
+      .progress-caption {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .css-detail-toggle {
+        align-items: center;
+      }
+
+      .detail-actions {
+        width: 100%;
+      }
+
+      .detail-actions .ghost-button {
+        flex: 1 1 180px;
+      }
     }
   </style>
 </head>
@@ -341,9 +661,16 @@
 https://example.com/amp-page2.html
 https://another-site.com/article-amp.html"
           ></textarea>
-          <button type="submit" id="submit-btn">Validate URLs</button>
+          <div class="button-row">
+            <button type="submit" id="submit-btn">Validate URLs</button>
+            <button type="button" id="css-check-btn">Check CSS Size</button>
+          </div>
         </div>
       </form>
+
+      <div id="css-results-container" class="results-container">
+        <div id="css-results-content"></div>
+      </div>
 
       <div id="results-container" class="results-container">
         <div id="results-summary" class="results-summary"></div>
@@ -357,12 +684,11 @@ https://another-site.com/article-amp.html"
   </div>
 
   <script>
-    // Check if page is opened as file:// and show warning
     if (window.location.protocol === 'file:') {
       document.body.innerHTML = `
         <div class="container">
           <div class="card" style="text-align: center; padding: 2rem;">
-            <h2 style="color: var(--error); margin-bottom: 1rem;">⚠️ Wrong Way to Open</h2>
+            <h2 style="color: var(--error); margin-bottom: 1rem;">Wrong Way to Open</h2>
             <p style="margin-bottom: 1rem;">You're opening this file directly from your computer.</p>
             <p style="margin-bottom: 1.5rem; color: var(--text-muted);">To use the AMP Validator, you need to access it through the web server.</p>
             <div style="background: var(--bg); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -372,7 +698,7 @@ https://another-site.com/article-amp.html"
                 <li>Open your browser and go to: <a href="http://localhost:3000" style="color: var(--link);">http://localhost:3000</a></li>
               </ol>
             </div>
-            <a href="http://localhost:3000" style="display: inline-block; padding: 0.75rem 1.5rem; background: var(--accent); color: #0a0a0c; text-decoration: none; border-radius: 8px; font-weight: 600;">Open AMP Validator →</a>
+            <a href="http://localhost:3000" style="display: inline-block; padding: 0.75rem 1.5rem; background: var(--accent); color: #0a0a0c; text-decoration: none; border-radius: 8px; font-weight: 600;">Open AMP Validator</a>
           </div>
         </div>
       `;
@@ -381,31 +707,142 @@ https://another-site.com/article-amp.html"
     const form = document.getElementById('validate-form');
     const urlsInput = document.getElementById('urls-input');
     const submitBtn = document.getElementById('submit-btn');
+    const cssCheckBtn = document.getElementById('css-check-btn');
+    const cssResultsContainer = document.getElementById('css-results-container');
+    const cssResultsContent = document.getElementById('css-results-content');
     const resultsContainer = document.getElementById('results-container');
     const resultsSummary = document.getElementById('results-summary');
     const resultsList = document.getElementById('results-list');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const urlText = urlsInput.value.trim();
-      if (!urlText) {
-        alert('Please enter at least one URL');
+    let latestCssResults = [];
+    let latestCssErrors = [];
+    const expandedCssCards = new Set();
+    const cssSearchTerms = {};
+
+    cssCheckBtn.addEventListener('click', async () => {
+      const urls = getUrlsFromInput();
+      if (!urls) {
         return;
       }
 
-      // Parse URLs from textarea (one per line, filter empty lines)
-      const urls = urlText
-        .split('\n')
-        .map(u => u.trim())
-        .filter(u => u.length > 0);
+      cssCheckBtn.disabled = true;
+      submitBtn.disabled = true;
+      cssCheckBtn.innerHTML = `<span class="loading"></span>Checking CSS Size for ${urls.length} URL(s)...`;
+      cssResultsContainer.classList.remove('visible');
+      cssResultsContent.innerHTML = '';
 
-      if (urls.length === 0) {
-        alert('Please enter at least one URL');
+      try {
+        const results = [];
+        const errors = [];
+
+        for (const url of urls) {
+          try {
+            const res = await fetch('/api/check-css-size', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url }),
+            });
+
+            const data = await parseJsonResponse(res);
+            if (!res.ok || !data.success) {
+              errors.push({ url, error: data.error || `Server error ${res.status}` });
+              continue;
+            }
+
+            results.push(data);
+          } catch (err) {
+            errors.push({ url, error: err.message || 'Unknown error occurred' });
+          }
+        }
+
+        latestCssResults = results;
+        latestCssErrors = errors;
+        expandedCssCards.clear();
+        Object.keys(cssSearchTerms).forEach((key) => delete cssSearchTerms[key]);
+        displayCssSizeResults();
+        cssResultsContainer.classList.add('visible');
+      } catch (err) {
+        cssResultsContent.innerHTML = `
+          <div class="css-result-card error">
+            <div class="result-title" style="color: var(--error);">CSS Size Check Failed</div>
+            <div class="result-detail" style="margin-top: 0.5rem; color: var(--text);">${escapeHtml(err.message || 'Unknown error occurred')}</div>
+          </div>
+        `;
+        cssResultsContainer.classList.add('visible');
+      } finally {
+        cssCheckBtn.disabled = false;
+        submitBtn.disabled = false;
+        cssCheckBtn.innerHTML = 'Check CSS Size';
+      }
+    });
+
+    cssResultsContent.addEventListener('click', async (event) => {
+      const target = event.target.closest('[data-action]');
+      if (!target) {
+        return;
+      }
+
+      const action = target.getAttribute('data-action');
+      const index = Number(target.getAttribute('data-index'));
+      const cssResult = latestCssResults[index];
+
+      if (!cssResult) {
+        return;
+      }
+
+      if (action === 'toggle-details') {
+        if (expandedCssCards.has(index)) {
+          expandedCssCards.delete(index);
+        } else {
+          expandedCssCards.add(index);
+        }
+        displayCssSizeResults();
+        return;
+      }
+
+      if (action === 'copy-css') {
+        try {
+          await navigator.clipboard.writeText(cssResult.rawCss || '');
+          target.textContent = 'Copied';
+          setTimeout(() => {
+            target.textContent = 'Copy CSS';
+          }, 1200);
+        } catch {
+          alert('Copy failed. Your browser blocked clipboard access.');
+        }
+        return;
+      }
+
+      if (action === 'download-css') {
+        const blob = new Blob([cssResult.rawCss || ''], { type: 'text/css;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `amp-custom-${index + 1}.css`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+    });
+
+    cssResultsContent.addEventListener('input', (event) => {
+      const input = event.target.closest('[data-css-search]');
+      if (!input) {
+        return;
+      }
+
+      cssSearchTerms[input.getAttribute('data-css-search')] = input.value;
+      displayCssSizeResults();
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const urls = getUrlsFromInput();
+      if (!urls) {
         return;
       }
 
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `<span class="loading"></span>Validating ${urls.length} URL(s)…`;
+      cssCheckBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="loading"></span>Validating ${urls.length} URL(s)...`;
       resultsContainer.classList.remove('visible');
       resultsSummary.innerHTML = '';
       resultsList.innerHTML = '';
@@ -414,7 +851,6 @@ https://another-site.com/article-amp.html"
         const results = [];
         const errors = [];
 
-        // Validate each URL
         for (const url of urls) {
           try {
             const res = await fetch('/api/validate', {
@@ -423,13 +859,7 @@ https://another-site.com/article-amp.html"
               body: JSON.stringify({ url }),
             });
 
-            let data;
-            try {
-              data = await res.json();
-            } catch (parseErr) {
-              errors.push({ url, error: `Failed to parse response: ${parseErr.message}` });
-              continue;
-            }
+            const data = await parseJsonResponse(res);
 
             if (!res.ok) {
               errors.push({ url, error: data.error || `Server error ${res.status}` });
@@ -447,10 +877,8 @@ https://another-site.com/article-amp.html"
           }
         }
 
-        // Display results
         displayResults(results, errors);
         resultsContainer.classList.add('visible');
-
       } catch (err) {
         console.error('Batch validation error:', err);
         resultsSummary.innerHTML = `
@@ -461,17 +889,344 @@ https://another-site.com/article-amp.html"
         resultsContainer.classList.add('visible');
       } finally {
         submitBtn.disabled = false;
+        cssCheckBtn.disabled = false;
         submitBtn.innerHTML = 'Validate URLs';
       }
     });
 
-    function displayResults(results, errors) {
-      // Calculate summary
-      const totalUrls = results.length + errors.length;
-      const validCount = results.filter(r => r.valid).length;
-      const invalidCount = results.filter(r => !r.valid).length;
+    function getUrlsFromInput() {
+      const urlText = urlsInput.value.trim();
+      if (!urlText) {
+        alert('Please enter at least one URL');
+        return null;
+      }
 
-      // Display summary
+      const urls = urlText
+        .split('\n')
+        .map((u) => u.trim())
+        .filter((u) => u.length > 0);
+
+      if (urls.length === 0) {
+        alert('Please enter at least one URL');
+        return null;
+      }
+
+      return urls;
+    }
+
+    async function parseJsonResponse(res) {
+      try {
+        return await res.json();
+      } catch (parseErr) {
+        throw new Error(`Failed to parse response: ${parseErr.message}`);
+      }
+    }
+
+    function displayCssSizeResults() {
+      const totalUrls = latestCssResults.length + latestCssErrors.length;
+      const withinLimitCount = latestCssResults.filter((r) => !r.exceedsLimit).length;
+      const overLimitCount = latestCssResults.filter((r) => r.exceedsLimit).length;
+
+      let html = `
+        <div class="results-summary">
+          <div class="summary-item">
+            <div class="summary-label">Total</div>
+            <div class="summary-value">${totalUrls}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Within Limit</div>
+            <div class="summary-value pass">${withinLimitCount}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Over Limit</div>
+            <div class="summary-value fail">${overLimitCount}</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-label">Errors</div>
+            <div class="summary-value fail">${latestCssErrors.length}</div>
+          </div>
+        </div>
+      `;
+
+      if (latestCssResults.length > 0) {
+        html += '<div style="margin-top: 1rem;"><div class="section-title">CSS Size Results</div>';
+        latestCssResults.forEach((data, index) => {
+          html += renderCssResultCard(data, index);
+        });
+        html += '</div>';
+      }
+
+      if (latestCssErrors.length > 0) {
+        html += '<div style="margin-top: 1rem;"><div class="section-title">CSS Size Check Errors</div>';
+        latestCssErrors.forEach((error) => {
+          html += `
+            <div class="result-item">
+              <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                <span style="color: var(--warning); font-size: 1.25rem; flex-shrink: 0;">!</span>
+                <div>
+                  <div style="font-weight: 600; color: var(--warning);">Could not check CSS size</div>
+                  <div class="validated-url" style="margin-top: 0.5rem;">${escapeHtml(error.url)}</div>
+                  <div style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">${escapeHtml(error.error)}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      cssResultsContent.innerHTML = html;
+    }
+
+    function renderCssResultCard(data, index) {
+      const tone = getUsageTone(data);
+      const expanded = expandedCssCards.has(index);
+      const searchTerm = cssSearchTerms[String(index)] || '';
+      const details = data.details || {};
+
+      return `
+        <div class="css-result-card ${tone}" style="margin-bottom: 1rem;">
+          <div class="css-result-head">
+            <div>
+              <div class="result-title">CSS Size Check</div>
+              <div class="validated-url">${escapeHtml(data.url)}</div>
+            </div>
+            <div class="status-pill ${tone}">${getUsageLabel(data)}</div>
+          </div>
+
+          <div class="css-metrics">
+            <div class="css-metric">
+              <div class="css-metric-label">CSS Size</div>
+              <div class="css-metric-value ${tone}">${formatKilobytes(data.cssKilobytes)} KB</div>
+              <div class="result-detail">${data.cssBytes.toLocaleString()} bytes</div>
+            </div>
+            <div class="css-metric">
+              <div class="css-metric-label">AMP Limit</div>
+              <div class="css-metric-value">75 KB</div>
+              <div class="result-detail">${data.ampLimitBytes.toLocaleString()} bytes</div>
+            </div>
+            <div class="css-metric">
+              <div class="css-metric-label">Remaining</div>
+              <div class="css-metric-value ${tone}">${formatKilobytes(data.remainingKilobytes)} KB</div>
+              <div class="result-detail">${data.remainingBytes.toLocaleString()} bytes</div>
+            </div>
+            <div class="css-metric">
+              <div class="css-metric-label">Usage</div>
+              <div class="css-metric-value ${tone}">${formatPercent(data.usagePercent)}%</div>
+              <div class="result-detail">${data.exceedsLimit ? 'Exceeds AMP CSS limit' : 'Within AMP CSS limit'}</div>
+            </div>
+          </div>
+
+          <div class="progress-wrap">
+            <div class="progress-track">
+              <div class="progress-fill ${tone}" style="--progress-width:${Math.min(data.usagePercent, 100)}%;"></div>
+            </div>
+            <div class="progress-caption">
+              <span>${formatKilobytes(data.cssKilobytes)} KB used</span>
+              <span>${formatKilobytes(data.ampLimitKilobytes)} KB max</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="css-detail-toggle"
+            aria-expanded="${expanded}"
+            data-action="toggle-details"
+            data-index="${index}"
+          >
+            <span>${expanded ? 'Hide CSS Details' : 'View CSS Details'}</span>
+            <span class="toggle-arrow">▼</span>
+          </button>
+
+          <div class="css-details-panel ${expanded ? 'expanded' : ''}">
+            <div class="css-details-inner">
+              <div class="section-title">CSS Statistics</div>
+              <div class="details-grid">
+                <div class="detail-box">
+                  <div class="summary-label">Total CSS Size</div>
+                  <strong>${data.cssBytes.toLocaleString()} bytes</strong>
+                </div>
+                <div class="detail-box">
+                  <div class="summary-label">Rules Count</div>
+                  <strong>${(details.totalRulesCount || 0).toLocaleString()}</strong>
+                </div>
+                <div class="detail-box">
+                  <div class="summary-label">Selectors Count</div>
+                  <strong>${(details.totalSelectorsCount || 0).toLocaleString()}</strong>
+                </div>
+                <div class="detail-box">
+                  <div class="summary-label">Media Queries</div>
+                  <strong>${(details.mediaQueriesCount || 0).toLocaleString()}</strong>
+                </div>
+                <div class="detail-box">
+                  <div class="summary-label">Estimated Gzip</div>
+                  <strong>${formatKilobytes(details.estimatedGzipKilobytes || 0)} KB</strong>
+                </div>
+              </div>
+
+              <div class="detail-section">
+                <div class="section-title">Optimization Insights</div>
+                <div class="detail-list">
+                  ${(details.optimizationSuggestions || []).map((suggestion) => `
+                    <div class="detail-list-item">${escapeHtml(suggestion)}</div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="detail-section">
+                <div class="section-title">Largest Selectors</div>
+                ${(details.largestSelectors && details.largestSelectors.length > 0) ? `
+                  <div class="detail-list">
+                    ${details.largestSelectors.slice(0, 5).map((item) => `
+                      <div class="detail-list-item">
+                        <code>${escapeHtml(item.selector)}</code>
+                        <div class="detail-list-meta">${item.length} chars · ${item.sizeBytes} bytes</div>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : '<div class="detail-success">No selector details available.</div>'}
+              </div>
+
+              <div class="detail-section">
+                <div class="section-title">Top 10 Largest CSS Blocks</div>
+                ${(details.topLargestBlocks && details.topLargestBlocks.length > 0) ? `
+                  <div class="detail-list">
+                    ${details.topLargestBlocks.slice(0, 10).map((item) => `
+                      <div class="detail-list-item">
+                        <code>${escapeHtml(item.selector)}</code>
+                        <div class="detail-list-meta">${item.sizeBytes.toLocaleString()} bytes · ${item.declarationCount} declarations</div>
+                        ${item.preview ? `<div class="result-detail">${escapeHtml(item.preview)}</div>` : ''}
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : '<div class="detail-success">No large CSS blocks found.</div>'}
+              </div>
+
+              <div class="detail-section">
+                <div class="section-title">Duplicate CSS Detection</div>
+                ${(details.duplicateSelectors && details.duplicateSelectors.length > 0) ? `
+                  <div class="detail-list">
+                    ${details.duplicateSelectors.slice(0, 10).map((item) => `
+                      <div class="detail-list-item">
+                        <code>${escapeHtml(item.selector)}</code>
+                        <div class="detail-list-meta">Repeated ${item.count} times</div>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : '<div class="detail-success">No duplicate selectors detected in this AMP CSS block.</div>'}
+              </div>
+
+              <div class="detail-section">
+                <div class="section-title">Empty Rule Warnings</div>
+                ${(details.emptyRules && details.emptyRules.length > 0) ? `
+                  <div class="detail-warning">
+                    Empty rules found: ${details.emptyRules.length}
+                  </div>
+                  <div class="detail-list" style="margin-top: 0.75rem;">
+                    ${details.emptyRules.slice(0, 10).map((selector) => `
+                      <div class="detail-list-item"><code>${escapeHtml(selector)}</code></div>
+                    `).join('')}
+                  </div>
+                ` : '<div class="detail-success">No empty CSS rules detected.</div>'}
+              </div>
+
+              <div class="detail-section">
+                <div class="section-title">Raw AMP CSS</div>
+                <div class="detail-actions">
+                  <button type="button" class="ghost-button" data-action="copy-css" data-index="${index}">Copy CSS</button>
+                  <button type="button" class="ghost-button" data-action="download-css" data-index="${index}">Download CSS</button>
+                </div>
+                <input
+                  type="search"
+                  class="search-input"
+                  placeholder="Search inside CSS..."
+                  value="${escapeAttribute(searchTerm)}"
+                  data-css-search="${index}"
+                >
+                <div class="code-viewer">
+                  <pre>${renderCssCodeBlock(data.rawCss || '', searchTerm)}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCssCodeBlock(cssText, searchTerm) {
+      const term = (searchTerm || '').trim().toLowerCase();
+      const lines = cssText.split('\n');
+      const visibleLines = lines
+        .map((line, idx) => ({ line, idx }))
+        .filter(({ line }) => !term || line.toLowerCase().includes(term));
+
+      if (visibleLines.length === 0) {
+        return `
+          <div class="code-line">
+            <span class="line-number">-</span>
+            <span class="line-code">No matching CSS lines found.</span>
+          </div>
+        `;
+      }
+
+      return visibleLines.map(({ line, idx }) => {
+        const highlightedLine = highlightCssLine(line);
+        return `
+          <div class="code-line">
+            <span class="line-number">${idx + 1}</span>
+            <span class="line-code">${highlightedLine || '&nbsp;'}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function highlightCssLine(line) {
+      let escaped = escapeHtml(line);
+      escaped = escaped.replace(/(\/\*.*?\*\/)/g, '<span class="css-comment">$1</span>');
+      escaped = escaped.replace(/^([^{}]+)(\s*\{)?/g, (match, selector, brace) => {
+        if (!brace) {
+          return match;
+        }
+        return `<span class="css-selector">${selector}</span>${brace || ''}`;
+      });
+      escaped = escaped.replace(/([a-zA-Z-]+)(\s*:)/g, '<span class="css-property">$1</span>$2');
+      escaped = escaped.replace(/(:\s*)([^;{}]+)/g, '$1<span class="css-value">$2</span>');
+      return escaped;
+    }
+
+    function getUsageTone(data) {
+      if (data.exceedsLimit || data.usagePercent > 100) {
+        return 'error';
+      }
+      if (data.usagePercent >= 85) {
+        return 'warning';
+      }
+      return 'safe';
+    }
+
+    function getUsageLabel(data) {
+      if (data.exceedsLimit || data.usagePercent > 100) {
+        return 'Over Limit';
+      }
+      if (data.usagePercent >= 85) {
+        return 'Near Limit';
+      }
+      return 'Safe';
+    }
+
+    function formatKilobytes(value) {
+      return Number(value).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function formatPercent(value) {
+      return Number(value).toFixed(1).replace(/\.0$/, '');
+    }
+
+    function displayResults(results, errors) {
+      const totalUrls = results.length + errors.length;
+      const validCount = results.filter((r) => r.valid).length;
+      const invalidCount = results.filter((r) => !r.valid).length;
+
       resultsSummary.innerHTML = `
         <div class="summary-item">
           <div class="summary-label">Total</div>
@@ -491,22 +1246,20 @@ https://another-site.com/article-amp.html"
         </div>
       `;
 
-      // Display results for each URL
       let html = '';
 
-      // Valid results
       if (validCount > 0) {
-        html += '<div style="margin-top: 1rem;"><div class="section-title">Valid AMP Pages ✓</div>';
-        results.filter(r => r.valid).forEach(r => {
+        html += '<div style="margin-top: 1rem;"><div class="section-title">Valid AMP Pages</div>';
+        results.filter((r) => r.valid).forEach((r) => {
           html += `
             <div class="result-item">
               <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
-                <span style="color: var(--accent); font-size: 1.25rem; flex-shrink: 0;">✓</span>
+                <span style="color: var(--accent); font-size: 1.25rem; flex-shrink: 0;">OK</span>
                 <div>
                   <div style="font-weight: 600; color: var(--accent);">Valid AMP</div>
                   <div class="validated-url" style="margin-top: 0.5rem;">${escapeHtml(r.url)}</div>
-                  ${r.warnings && r.warnings.length > 0 ? 
-                    `<div style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--warning);">⚠️ ${r.warnings.length} warning(s)</div>` 
+                  ${r.warnings && r.warnings.length > 0
+                    ? `<div style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--warning);">Warnings: ${r.warnings.length}</div>`
                     : ''}
                 </div>
               </div>
@@ -516,41 +1269,30 @@ https://another-site.com/article-amp.html"
         html += '</div>';
       }
 
-      // Invalid results
       if (invalidCount > 0) {
-        html += '<div style="margin-top: 1rem;"><div class="section-title">Invalid AMP Pages ✕</div>';
-        results.filter(r => !r.valid).forEach((r, idx) => {
+        html += '<div style="margin-top: 1rem;"><div class="section-title">Invalid AMP Pages</div>';
+        results.filter((r) => !r.valid).forEach((r, idx) => {
           const errorListId = `errors-${Date.now()}-${idx}`;
           const hasMoreErrors = r.errors.length > 3;
           html += `
             <div class="result-item">
               <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
-                <span style="color: var(--error); font-size: 1.25rem; flex-shrink: 0;">✕</span>
+                <span style="color: var(--error); font-size: 1.25rem; flex-shrink: 0;">NO</span>
                 <div style="flex: 1;">
                   <div style="font-weight: 600; color: var(--error);">Invalid AMP (${r.errors.length} error${r.errors.length !== 1 ? 's' : ''})</div>
                   <div class="validated-url" style="margin-top: 0.5rem;">${escapeHtml(r.url)}</div>
                   <div style="margin-top: 0.75rem;">
-                    ${r.errors.slice(0, 3).map(e => `
+                    ${r.errors.slice(0, 3).map((e) => `
                       <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0; padding: 0.5rem; background: var(--bg); border-left: 2px solid var(--error); border-radius: 4px;">
                         <strong>Line ${e.line}:</strong> ${escapeHtml(e.message)}
                       </div>
                     `).join('')}
                     ${hasMoreErrors ? `
-                      <button onclick="toggleErrors('${errorListId}', this)" style="
-                        margin-top: 0.5rem;
-                        padding: 0.4rem 0.8rem;
-                        background: rgba(239, 68, 68, 0.2);
-                        border: 1px solid var(--error);
-                        color: var(--error);
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 0.85rem;
-                        transition: background 0.2s;
-                      " onmouseover="this.style.background='rgba(239, 68, 68, 0.3)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.2)'">
-                        ▼ Show ${r.errors.length - 3} More Error(s)
+                      <button onclick="toggleErrors('${errorListId}', this)" data-original-text="Show ${r.errors.length - 3} More Error(s)" class="ghost-button" style="margin-top: 0.5rem; padding: 0.5rem 0.9rem;">
+                        Show ${r.errors.length - 3} More Error(s)
                       </button>
                       <div id="${errorListId}" style="display: none; margin-top: 0.5rem;">
-                        ${r.errors.slice(3).map(e => `
+                        ${r.errors.slice(3).map((e) => `
                           <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0; padding: 0.5rem; background: var(--bg); border-left: 2px solid var(--error); border-radius: 4px;">
                             <strong>Line ${e.line}:</strong> ${escapeHtml(e.message)}
                           </div>
@@ -566,14 +1308,13 @@ https://another-site.com/article-amp.html"
         html += '</div>';
       }
 
-      // Fetch errors
       if (errors.length > 0) {
-        html += '<div style="margin-top: 1rem;"><div class="section-title">Failed to Fetch ⚠️</div>';
-        errors.forEach(e => {
+        html += '<div style="margin-top: 1rem;"><div class="section-title">Failed to Fetch</div>';
+        errors.forEach((e) => {
           html += `
             <div class="result-item">
               <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
-                <span style="color: var(--warning); font-size: 1.25rem; flex-shrink: 0;">⚠️</span>
+                <span style="color: var(--warning); font-size: 1.25rem; flex-shrink: 0;">!</span>
                 <div>
                   <div style="font-weight: 600; color: var(--warning);">Could not fetch URL</div>
                   <div class="validated-url" style="margin-top: 0.5rem;">${escapeHtml(e.url)}</div>
@@ -596,20 +1337,24 @@ https://another-site.com/article-amp.html"
       return div.innerHTML;
     }
 
+    function escapeAttribute(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
     function toggleErrors(elementId, button) {
       const errorDiv = document.getElementById(elementId);
       if (errorDiv.style.display === 'none') {
         errorDiv.style.display = 'block';
-        button.innerHTML = '▲ Hide Details';
-        button.style.background = 'rgba(239, 68, 68, 0.3)';
+        button.innerHTML = 'Hide Details';
       } else {
         errorDiv.style.display = 'none';
-        const originalText = button.getAttribute('data-original-text') || button.innerHTML;
-        button.innerHTML = originalText;
-        button.style.background = 'rgba(239, 68, 68, 0.2)';
+        button.innerHTML = button.getAttribute('data-original-text') || 'Show Details';
       }
     }
-  </script>
   </script>
 </body>
 </html>
