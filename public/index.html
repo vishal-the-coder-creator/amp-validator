@@ -717,7 +717,9 @@ https://another-site.com/article-amp.html"
     let latestCssResults = [];
     let latestCssErrors = [];
     const expandedCssCards = new Set();
+    const expandedRawCssCards = new Set();
     const cssSearchTerms = {};
+    const RAW_CSS_PREVIEW_LINE_LIMIT = 250;
 
     cssCheckBtn.addEventListener('click', async () => {
       const urls = getUrlsFromInput();
@@ -758,6 +760,7 @@ https://another-site.com/article-amp.html"
         latestCssResults = results;
         latestCssErrors = errors;
         expandedCssCards.clear();
+        expandedRawCssCards.clear();
         Object.keys(cssSearchTerms).forEach((key) => delete cssSearchTerms[key]);
         displayCssSizeResults();
         cssResultsContainer.classList.add('visible');
@@ -793,8 +796,19 @@ https://another-site.com/article-amp.html"
       if (action === 'toggle-details') {
         if (expandedCssCards.has(index)) {
           expandedCssCards.delete(index);
+          expandedRawCssCards.delete(index);
         } else {
           expandedCssCards.add(index);
+        }
+        displayCssSizeResults();
+        return;
+      }
+
+      if (action === 'toggle-raw-css') {
+        if (expandedRawCssCards.has(index)) {
+          expandedRawCssCards.delete(index);
+        } else {
+          expandedRawCssCards.add(index);
         }
         displayCssSizeResults();
         return;
@@ -981,8 +995,10 @@ https://another-site.com/article-amp.html"
     function renderCssResultCard(data, index) {
       const tone = getUsageTone(data);
       const expanded = expandedCssCards.has(index);
+      const rawCssExpanded = expandedRawCssCards.has(index);
       const searchTerm = cssSearchTerms[String(index)] || '';
       const details = data.details || {};
+      const rawCssMeta = getRawCssView(data.rawCss || '', searchTerm, rawCssExpanded);
 
       return `
         <div class="css-result-card ${tone}" style="margin-bottom: 1rem;">
@@ -1135,6 +1151,7 @@ https://another-site.com/article-amp.html"
                 <div class="detail-actions">
                   <button type="button" class="ghost-button" data-action="copy-css" data-index="${index}">Copy CSS</button>
                   <button type="button" class="ghost-button" data-action="download-css" data-index="${index}">Download CSS</button>
+                  ${rawCssMeta.canToggle ? `<button type="button" class="ghost-button" data-action="toggle-raw-css" data-index="${index}">${rawCssExpanded ? 'Show Less CSS' : 'Show Full CSS'}</button>` : ''}
                 </div>
                 <input
                   type="search"
@@ -1143,8 +1160,11 @@ https://another-site.com/article-amp.html"
                   value="${escapeAttribute(searchTerm)}"
                   data-css-search="${index}"
                 >
+                <div class="result-detail" style="margin-top: 0.6rem;">
+                  ${rawCssMeta.statusText}
+                </div>
                 <div class="code-viewer">
-                  <pre>${renderCssCodeBlock(data.rawCss || '', searchTerm)}</pre>
+                  <pre>${renderCssCodeBlock(rawCssMeta.visibleLines)}</pre>
                 </div>
               </div>
             </div>
@@ -1153,14 +1173,40 @@ https://another-site.com/article-amp.html"
       `;
     }
 
-    function renderCssCodeBlock(cssText, searchTerm) {
-      const term = (searchTerm || '').trim().toLowerCase();
+    function getRawCssView(cssText, searchTerm, showFullCss) {
       const lines = cssText.split('\n');
-      const visibleLines = lines
-        .map((line, idx) => ({ line, idx }))
-        .filter(({ line }) => !term || line.toLowerCase().includes(term));
+      const term = (searchTerm || '').trim().toLowerCase();
+      const matchedLines = [];
 
-      if (visibleLines.length === 0) {
+      for (let idx = 0; idx < lines.length; idx += 1) {
+        const line = lines[idx];
+        if (!term || line.toLowerCase().includes(term)) {
+          matchedLines.push({ lineNumber: idx + 1, line });
+        }
+      }
+
+      const shouldLimit = !term && !showFullCss && matchedLines.length > RAW_CSS_PREVIEW_LINE_LIMIT;
+      const visibleLines = shouldLimit
+        ? matchedLines.slice(0, RAW_CSS_PREVIEW_LINE_LIMIT)
+        : matchedLines;
+
+      let statusText = `${visibleLines.length.toLocaleString()} of ${matchedLines.length.toLocaleString()} matching line(s) shown`;
+      if (!term && !showFullCss && matchedLines.length > RAW_CSS_PREVIEW_LINE_LIMIT) {
+        statusText += ` · Preview limited to ${RAW_CSS_PREVIEW_LINE_LIMIT} lines for performance`;
+      }
+      if (term) {
+        statusText += ` · Search: "${searchTerm}"`;
+      }
+
+      return {
+        visibleLines,
+        canToggle: !term && matchedLines.length > RAW_CSS_PREVIEW_LINE_LIMIT,
+        statusText,
+      };
+    }
+
+    function renderCssCodeBlock(lines) {
+      if (!lines || lines.length === 0) {
         return `
           <div class="code-line">
             <span class="line-number">-</span>
@@ -1169,29 +1215,12 @@ https://another-site.com/article-amp.html"
         `;
       }
 
-      return visibleLines.map(({ line, idx }) => {
-        const highlightedLine = highlightCssLine(line);
-        return `
-          <div class="code-line">
-            <span class="line-number">${idx + 1}</span>
-            <span class="line-code">${highlightedLine || '&nbsp;'}</span>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function highlightCssLine(line) {
-      let escaped = escapeHtml(line);
-      escaped = escaped.replace(/(\/\*.*?\*\/)/g, '<span class="css-comment">$1</span>');
-      escaped = escaped.replace(/^([^{}]+)(\s*\{)?/g, (match, selector, brace) => {
-        if (!brace) {
-          return match;
-        }
-        return `<span class="css-selector">${selector}</span>${brace || ''}`;
-      });
-      escaped = escaped.replace(/([a-zA-Z-]+)(\s*:)/g, '<span class="css-property">$1</span>$2');
-      escaped = escaped.replace(/(:\s*)([^;{}]+)/g, '$1<span class="css-value">$2</span>');
-      return escaped;
+      return lines.map(({ lineNumber, line }) => `
+        <div class="code-line">
+          <span class="line-number">${lineNumber}</span>
+          <span class="line-code">${escapeHtml(line) || '&nbsp;'}</span>
+        </div>
+      `).join('');
     }
 
     function getUsageTone(data) {
